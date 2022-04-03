@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Index</title>
+  </head>
+  <body>
+    <pre id="output">Loading Script</pre>
+    <style>
+      body {
+        background-color: black;
+        color: white;
+        margin: 0;
+      }
+      #output {
+        line-height: 1em;
+      }
+    </style>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"
+      integrity="sha512-xQBQYt9UcgblF6aCMrwU1NkVA7HCXaSN2oq0so80KO+y68M+n64FOcqgav4igHe6D5ObBLIf68DWv+gfBowczg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script>
+      (async () => {
+        const el = document.getElementById("output");
+        el.innerHTML = "Downloading";
+        const blob = await (
+          await fetch("output.zip?" + Math.random().toString().slice(2))
+        ).blob();
+        el.innerHTML = "Loading";
+        const zip = await JSZip.loadAsync(blob);
+        const data = (await zip.file("output.txt").async("string")).split(
+          "\nEOF\n"
+        );
+
+        setInterval(() => (el.innerHTML = data.shift()), 50);
+      })();
+    </script>
+  </body>
+</html>

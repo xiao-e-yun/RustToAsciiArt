@@ -1,0 +1,6 @@
+target
+Cargo.lock
+data
+tmp
+output.txt
+output.zip
