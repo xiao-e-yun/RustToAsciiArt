@@ -38,20 +38,24 @@ impl Saved {
         len += 1
       } else {
         if len == 1 {
-          res += &curr.to_string();
+          res += &(curr.to_string() + "F");
         } else if len > 1 {
-          res += &curr.to_string().repeat(len as usize);
+          res += &curr.to_string();
+          res += &(len.to_string() + "F");
         }
         curr = ch;
         len = 1;
       }
     }
 
-    if len == 1 {
+    if len > 1 {
       res += &curr.to_string();
-    } else if len > 1 {
-      res += &curr.to_string().repeat(len as usize);
+      res += &len.to_string();
+    } else {
+      res += &curr.to_string();
     }
+
+    res += "F";
 
     self.frames.insert(index, res);
   }

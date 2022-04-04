@@ -32,11 +32,42 @@
         ).blob();
         el.innerHTML = "Loading";
         const zip = await JSZip.loadAsync(blob);
-        const data = (await zip.file("output.txt").async("string")).split(
-          "\nEOF\n"
+        const data = JSON.parse(
+          await zip.file("output.art.json").async("string")
         );
+        const frames = data.frames;
+        const [width, height] = data.size;
 
-        setInterval(() => (el.innerHTML = data.shift()), 50);
+        let i = 1;
+        setInterval(() => {
+          const frame = frames[i++].split("");
+          let output = "";
+
+          for (;;) {
+            const ch = frame.shift();
+            if (ch === undefined) break;
+
+            let length = "";
+            for (;;) {
+              let le = frame.shift();
+              if (le == "F") break;
+              length += le;
+            }
+
+            if (length === "") output += ch;
+            else output += ch.repeat(parseInt(length));
+          }
+
+          let l = height;
+          while (l--) {
+            output = insert(output, width * 2 * l, "\n");
+          }
+          el.innerHTML = output;
+        }, 50);
+
+        function insert(o, i, s) {
+          return o.slice(0, i) + s + o.slice(i);
+        }
       })();
     </script>
   </body>
