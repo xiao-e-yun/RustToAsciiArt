@@ -1,82 +1,121 @@
-use std::{collections::BTreeMap, vec};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap};
 
 #[derive(Serialize, Deserialize)]
-pub struct Frames {
-    pub size: (u16,u16),
-    pub frames: BTreeMap<u32,Vec<FramePixel>>,
-    pub fps: u16,
+pub struct Saved {
+  pub size: (u32, u32),
+  pub fps: Option<u16>,
+  pub frames: BTreeMap<u32, String>,
 }
-
-impl Frames {
-
-    pub fn len(&self)-> u32 {
-        self.frames.len() as u32
+impl Saved {
+  pub fn concat(&mut self, mut other: Saved) {
+    if self.size != other.size {
+      panic!("diff size")
     }
 
-    pub fn as_frame(mut self)-> Option<Frame> {
+    self.frames.append(&mut other.frames)
+  }
 
-        if self.frames.len() != 1 { return None; }
-
-        Some(Frame {
-          size: self.size,
-          pixel: self.frames.remove(&0).unwrap()
-        })
-
+  pub fn new(fps: Option<u16>) -> Self {
+    Self {
+      fps,
+      size: (0, 0),
+      frames: BTreeMap::new(),
     }
+  }
 
-    pub fn concat(&mut self,mut other:Frames) {
+  pub fn resize(&mut self, size: (u32, u32)) {
+    self.size = size;
+  }
 
-        if self.size != other.size { panic!("diff size") }
+  pub fn insert(&mut self, index: u32, text: String) {
+    let mut res = String::new();
+    let mut curr = '\u{0201}';
+    let mut len = 0_u32;
 
-        self.frames.append(&mut other.frames)
-
-    }
-
-    pub fn insert(&mut self,index:u32,text:String){
-
-        let mut res = vec![];
-        let mut curr = '\u{0203}';
-        let mut len = 0_u32;
-
-        for ch in text.chars() {
-
-            if ch == curr { len += 1 }
-            else {
-                if len == 1 { res.push(FramePixel::Single(ch)) }
-                else if len > 1 { res.push(FramePixel::Multiple(ch,len)) }
-                curr = ch;
-                len = 1;
-            }
-
+    for ch in text.chars() {
+      if ch == curr {
+        len += 1
+      } else {
+        if len == 1 {
+          res += &curr.to_string();
+        } else if len > 1 {
+          res += &curr.to_string().repeat(len as usize);
         }
-
-        self.frames.insert(index, res);
+        curr = ch;
+        len = 1;
+      }
     }
 
+    if len == 1 {
+      res += &curr.to_string();
+    } else if len > 1 {
+      res += &curr.to_string().repeat(len as usize);
+    }
+
+    self.frames.insert(index, res);
+  }
+
+  pub fn unzip(self)-> BTreeMap<u32, String> {
+    self
+      .frames
+      .into_iter()
+      .map(|(i, fr)| {
+        let mut out = String::new();
+        let mut chs: Vec<char> = fr.chars().collect();
+        chs.reverse();
+
+        loop {
+          let ch = match chs.pop() {
+            Some(ch) => ch,
+            None => break, //END
+          };
+
+          let mut length = String::new();
+          loop {
+            let le = chs.pop().unwrap();
+            if le == 'F' {
+              break;
+            }
+            length.push(le)
+          }
+
+          let st = ch.to_string();
+          if length.is_empty() { out += &st }
+          else { out += &st.repeat(length.parse().unwrap())}
+        }
+        (i, out)
+      })
+    .collect()
+  }
 }
 
-
-
-#[derive(Serialize, Deserialize)]
-pub struct Frame {
-    pub size: (u16,u16),
-    pub pixel: Vec<FramePixel>,
+#[derive(Clone)]
+pub struct Pixel {
+  pub lt: u8,
+  pub lb: u8,
+  pub rt: u8,
+  pub rb: u8,
+  pub x: u32,
+  pub y: u32,
 }
 
+impl Pixel {
+  pub fn new(xy: (u32, u32)) -> Self {
+    Self {
+      lt: 0,
+      lb: 0,
+      rt: 0,
+      rb: 0,
+      x: xy.0,
+      y: xy.1,
+    }
+  }
 
-
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum FramePixel {
-    Single(char),
-    Multiple(char,u32)
-}
-impl FramePixel {
-  pub fn to_string(self)-> String {
-    match self {
-      Self::Single(v) => v.to_string(),
-      Self::Multiple(v, l) => v.to_string().repeat(l as usize),
+  pub fn get(&self, lr: bool) -> (u16, u16) {
+    match lr {
+      true => (self.lt.into(), self.lb.into()),
+      false => (self.rt.into(), self.rb.into()),
     }
   }
 }
