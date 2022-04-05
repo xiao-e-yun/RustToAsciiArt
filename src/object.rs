@@ -16,16 +16,12 @@ impl Saved {
     self.frames.append(&mut other.frames)
   }
 
-  pub fn new(fps: Option<u16>) -> Self {
+  pub fn new(size: (u32, u32),fps: Option<u16>) -> Self {
     Self {
       fps,
-      size: (0, 0),
+      size,
       frames: BTreeMap::new(),
     }
-  }
-
-  pub fn resize(&mut self, size: (u32, u32)) {
-    self.size = size;
   }
 
   pub fn insert(&mut self, index: u32, text: String) {

@@ -14,18 +14,23 @@ use crate::{
   get_file, get_input,
   object::{Pixel, Saved},
   resize::resize,
-  text,
+  text, wait_press,
 };
 
 #[test]
-fn test() {main()}
+fn test() {
+  main()
+}
 
 pub fn main() {
-  let (path, size, fps) = menu();
+  let (path, size, double, fps) = menu();
 
   let map_thread = thread::spawn(map);
 
-  let mut files = resize(path, format!("fps={},scale={}", fps, size));
+  let mut files = resize(
+    path,
+    format!("fps={},scale={}", fps, size_mix(size.clone(), double)),
+  );
   let mapping = map_thread.join().unwrap();
   println!("Resize complete.");
 
@@ -56,23 +61,18 @@ pub fn main() {
 
       let files = files.split_off(files.len() - len);
       let mapping = Arc::clone(&mapping);
+      let size: (u32,u32) = (size.0 * if double { 2 } else { 1 },size.1);
 
       threads.push(thread::spawn(move || {
         println!("Core-{} started", core_id);
 
-        let mut frames = Saved::new(Some(fps));
+        let mut frames = Saved::new(size, Some(fps));
 
-        let mut frist = true;
         for path in files.into_iter() {
           let frame = image::open(&path).unwrap();
           let pixels = frame.pixels();
           let height = frame.height();
           let mut new_pixels = BTreeMap::new();
-
-          if frist {
-            frist = false;
-            frames.resize((frame.width() / 2, height / 2))
-          }
 
           for (x, y, rgba) in pixels {
             let [r, g, b, _] = rgba.0;
@@ -145,10 +145,11 @@ pub fn main() {
     });
 
     println!("Convert done");
-    let data = 
-    serde_json::to_string( &frist );
-    fs::write("output.art.json",data.unwrap().as_bytes()).unwrap();
-    println!("Save in `output.art.json`");
+    let data = serde_json::to_string(&frist);
+    fs::write("output.art.json", data.unwrap().as_bytes()).unwrap();
+    println!("Saved in `output.art.json`");
+
+    wait_press("All done.","back");
   }
 }
 
@@ -176,9 +177,10 @@ fn map() -> Vec<text::Text> {
 }
 
 //
-fn menu() -> (String, String, u16) {
+fn menu() -> (String, (u32, u32, String), bool, u16) {
   let path = RefCell::new(get_path());
   let size = RefCell::new(get_size());
+  let double = RefCell::new(get_double());
   let fps = RefCell::new(get_fps());
 
   loop {
@@ -187,8 +189,9 @@ fn menu() -> (String, String, u16) {
       || {
         println!("0.Confirm");
         println!("1.Path: {}", path.borrow());
-        println!("2.Size: {}", size.borrow().1);
-        println!("3.FPS: {}", fps.borrow());
+        println!("2.Size: {}:{} ({})", size.borrow().0, size.borrow().1, size.borrow().2);
+        println!("3.Double: {}", double.borrow());
+        println!("4.FPS: {}", fps.borrow());
       },
       |txt| {
         if txt.is_empty() {
@@ -207,7 +210,8 @@ fn menu() -> (String, String, u16) {
           0 => return Ok(true),
           1 => *path.borrow_mut() = get_path(),
           2 => *size.borrow_mut() = get_size(),
-          3 => *fps.borrow_mut() = get_fps(),
+          3 => *double.borrow_mut() = get_double(),
+          4 => *fps.borrow_mut() = get_fps(),
           _ => return Err("Incorrect value"),
         };
         Ok(false)
@@ -217,7 +221,7 @@ fn menu() -> (String, String, u16) {
     }
   }
 
-  (path.take(), size.take().0, fps.take())
+  (path.take(), size.take(), double.take(), fps.take())
 }
 
 fn get_path() -> String {
@@ -245,8 +249,8 @@ fn get_fps() -> u16 {
   )
 }
 
-fn get_size() -> (String, String) {
-  let (mut size, original) = get_input(
+fn get_size() -> (u32, u32, String) {
+  get_input(
     "Size",
     || {
       println!("{{width}}:{{height}}");
@@ -272,24 +276,47 @@ fn get_size() -> (String, String) {
       };
 
       let mut parse_err = false;
-      let sc: Vec<u16> = scale
-        .iter()
-        .map(|vec| {
-          let val: u16 = vec.parse().unwrap_or(0);
-          if val == 0 {
-            parse_err = true
-          }
-          val * 2
-        })
-        .collect();
-      if parse_err {
-        return Err("Incorrect int");
-      }
-      Ok((sc, scale.join(":")))
-    },
-  );
+      let (width, height) = {
+        let mut sc: Vec<u32> = scale
+          .iter()
+          .map(|vec| {
+            let val: u32 = vec.parse().unwrap_or(0);
+            if val == 0 {
+              parse_err = true
+            }
+            val
+          })
+          .collect();
 
-  let dw = get_input(
+        if parse_err {
+          return Err("Incorrect int");
+        }
+
+        let height = sc.pop().unwrap();
+        let width = sc.pop().unwrap();
+
+        (width, height)
+      };
+
+      fn gcd(a:u32,b:u32)->String {
+        let (mut max,mut min) = if a >= b { (a,b) } else { (b,a) };
+        while min != 0 {
+    
+          let tmax = min;
+          min = max % min;
+          max = tmax;
+    
+        }
+        (a/max).to_string() + ":" + &(b/max).to_string()
+      }
+
+      Ok((width,height,gcd(width,height)))
+    },
+  )
+}
+
+fn get_double() -> bool {
+  get_input(
     "Double width",
     || {
       println!("4 pixel           ██");
@@ -310,12 +337,14 @@ fn get_size() -> (String, String) {
         _ => Err("Incorrect format"),
       }
     },
-  );
+  )
+}
 
-  if !dw {
-    *size.get_mut(0).unwrap() /= 2
+fn size_mix(mut size: (u32, u32, String), double: bool) -> String {
+  size.1 *= 2;
+  if double {
+    size.0 *= 2
   }
 
-  let map: Vec<_> = size.into_iter().map(|x| x.to_string()).collect();
-  (map.join(":"), original)
+  size.0.to_string() + ":" + &size.1.to_string()
 }

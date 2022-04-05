@@ -3,71 +3,125 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>Index</title>
+    <title>RustToAsciiArt-BadApple</title>
   </head>
   <body>
+    <article id="info">
+      <a rel="author" href="//xiaoeyun.me">xiaoeyun</a>
+      <a href="//github.com/xiao-e-yun/RustToAsciiArt">github</a>
+      <h1 id="title">RustToAsciiArt</h1>
+    </article>
     <pre id="output">Loading Script</pre>
     <style>
       body {
         background-color: black;
         color: white;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
         margin: 0;
       }
       #output {
+        text-align: center;
+        width: -webkit-fit-content;
+        width: fit-content;
         line-height: 1em;
+        margin: 0;
+      }
+      article {
+        z-index: 1;
+        font-size: min(5vh, 5vw);
+        position: fixed;
+        transition: opacity 1s 1s ease-in-out;
+        bottom: min(1vw, 1vh);
+        right: min(1vw, 1vh);
+      }
+      a {
+        color: #000;
+        border-radius: .2em .2em 0 0;
+        padding: 0 .2em 0;
+        background-color: #fff;
+        text-decoration: none;
+      }
+      a:hover {
+        background-color: rgb(150, 150, 150);
+        text-decoration: none;
+      }
+      #title {
+        border-style: solid;
+        border-width: 0.1em 0 0 0;
+        border-color: white;
+        margin: 0;
       }
     </style>
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"
-      integrity="sha512-xQBQYt9UcgblF6aCMrwU1NkVA7HCXaSN2oq0so80KO+y68M+n64FOcqgav4igHe6D5ObBLIf68DWv+gfBowczg=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
     <script>
-      (async () => {
-        const el = document.getElementById("output");
+      const el = document.getElementById("output");
+      const iel = document.getElementById("info");
+
+      const screen = {
+        scale: 1,
+        resize() {
+          const size = el.getBoundingClientRect()
+          const width = size.width / screen.scale
+          const height = size.height / screen.scale
+          
+          screen.scale = Math.min(window.innerWidth / width,window.innerHeight / height)
+          el.style.transform = `scale(${screen.scale})`
+        },
+      }
+
+      ;(async () => {
         el.innerHTML = "Downloading";
-        const blob = await (
-          await fetch("output.zip?" + Math.random().toString().slice(2))
-        ).blob();
+        const file = await (await fetch("output.art.json")).text()
+
         el.innerHTML = "Loading";
-        const zip = await JSZip.loadAsync(blob);
-        const data = JSON.parse(
-          await zip.file("output.art.json").async("string")
-        );
+        const data = JSON.parse(file);
         const frames = data.frames;
-        const [width, height] = data.size;
+        let [width, height] = data.size;
 
-        let i = 1;
-        setInterval(() => {
-          const frame = frames[i++].split("");
-          let output = "";
+        el.innerHTML = "done";
+        iel.style.opacity = 0;
+        iel.addEventListener("transitionend", ()=>{
+          iel.remove()
 
-          for (;;) {
-            const ch = frame.shift();
-            if (ch === undefined) break;
+          let i = 1;
+          setInterval(() => {
+            const frame = frames[i++].split("");
+            let output = "";
 
-            let length = "";
             for (;;) {
-              let le = frame.shift();
-              if (le == "F") break;
-              length += le;
+              const ch = frame.shift();
+              if (ch === undefined) break;
+
+              let length = "";
+              for (;;) {
+                let le = frame.shift();
+                if (le == "F") break;
+                length += le;
+              }
+
+              if (length === "") output += ch;
+              else output += ch.repeat(parseInt(length));
             }
 
-            if (length === "") output += ch;
-            else output += ch.repeat(parseInt(length));
-          }
+            let l = height;
+            while (--l) {
+              output = insert(output, width * l, "\n");
+            }
+            el.innerText = output;
+            if(i == 2) {
+              screen.resize()
+              addEventListener("resize", screen.resize)
+            }
+          }, 50);
 
-          let l = height;
-          while (l--) {
-            output = insert(output, width * 2 * l, "\n");
+          function insert(o, i, s) {
+            return o.slice(0, i) + s + o.slice(i);
           }
-          el.innerHTML = output;
-        }, 50);
-
-        function insert(o, i, s) {
-          return o.slice(0, i) + s + o.slice(i);
-        }
+        });
       })();
     </script>
   </body>

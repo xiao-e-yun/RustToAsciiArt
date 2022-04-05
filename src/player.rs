@@ -1,13 +1,13 @@
 use std::{
   fs,
-  io::{stdin, stdout, Write},
+  io::{stdout, Write},
   thread::sleep,
   time::Duration,
 };
 
 use crate::{
   get_file,
-  object::Saved,
+  object::Saved, wait_press,
 };
 
 #[test]
@@ -28,9 +28,7 @@ pub fn main() {
     println!("Size {}x{}", size.0, size.1);
     println!("FPS {}", fps);
 
-    print!("\nPress any key to play");
-    stdout().flush().unwrap();
-    stdin().read_line(&mut String::new()).unwrap();
+    wait_press("Player is ready.","play");
     
     for frame in frames.into_iter() {
       print!("\x1B[2J\x1B[H");
@@ -43,7 +41,6 @@ pub fn main() {
 
 fn draw(frame: String, size: (u32, u32)) {
   let (width, height) = size;
-  let width = width * 2; // !TEST
 
   let mut output:Vec<char> = frame.chars().collect();
   for i in 1..height+1 {

@@ -105,3 +105,10 @@ pub fn get_file(example: &str, ends_with: Option<&str>) -> String {
     },
   )
 }
+
+pub fn wait_press(info:&str,next:&str){
+  println!("\n{}",info);
+  print!("Press any key to {}",next);
+  stdout().flush().unwrap();
+  stdin().read_line(&mut String::new()).unwrap();
+}
