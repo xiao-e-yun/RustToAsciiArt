@@ -58,22 +58,22 @@
       }
     </style>
     <script>
-      const el = document.getElementById("output");
-      const iel = document.getElementById("info");
-
-      const screen = {
-        scale: 1,
-        resize() {
-          const size = el.getBoundingClientRect()
-          const width = size.width / screen.scale
-          const height = size.height / screen.scale
-          
-          screen.scale = Math.min(window.innerWidth / width,window.innerHeight / height)
-          el.style.transform = `scale(${screen.scale})`
-        },
-      }
-
       ;(async () => {
+        const el = document.getElementById("output");
+        const iel = document.getElementById("info");
+
+        const screen = {
+          scale: 1,
+          resize() {
+            const size = el.getBoundingClientRect()
+            const width = size.width / screen.scale
+            const height = size.height / screen.scale
+            
+            screen.scale = Math.min(window.innerWidth / width,window.innerHeight / height)
+            el.style.transform = `scale(${screen.scale})`
+          },
+        }
+
         el.innerHTML = "Downloading";
         const file = await (await fetch("output.art.json")).text()
 
@@ -88,8 +88,10 @@
           iel.remove()
 
           let i = 1;
-          setInterval(() => {
-            const frame = frames[i++].split("");
+          const player = setInterval(() => {
+            const current = frames[i++];
+            if (current === undefined) clearInterval(player)
+            const frame = current.split("");
             let output = "";
 
             for (;;) {
