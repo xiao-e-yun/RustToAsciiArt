@@ -7,6 +7,7 @@ Mini and Quick.
 
 ∆. Need Install `ffmpeg` in environment
 
+[Example](https://static.xiaoeyun.me/rust-to-ascii-art/)
 Implement the player for js
 ```JS
 const data = JSON.parse("OUTPUT.art.json")
